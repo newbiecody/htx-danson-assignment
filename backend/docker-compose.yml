@@ -5,13 +5,30 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    volumes:
-      - ./src:/app/src
-      - ./backend:/app/backend
     ports:
       - "8000:8000"
+    volumes:
+      - ./temp:/app/temp
+      - ./database.db:/app/database.db
     environment:
-      - ENVIRONMENT=development
-      # Add any other environment variables your application needs
-    # If you need to run a specific command instead of what's in the Dockerfile
-    # command: python -m src.backend.main
+      - PYTHONPATH=/app
+      - DATABASE_URL=sqlite:////app/database.db
+    depends_on:
+      - celery-worker
+
+  celery-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: celery -A src.backend.services.celery_service.celery worker --loglevel=info
+    volumes:
+      - ./temp:/app/temp
+    environment:
+      - PYTHONPATH=/app
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"

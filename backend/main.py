@@ -1,8 +1,8 @@
 import os
 from typing import List
 
-from backend.services.celery_service import celery_transcribe_audio, celery
-from backend.services.sqlite_db_service import Transcription, get_transcripts
+from src.backend.services.celery_service import celery_transcribe_audio, celery
+from src.backend.services.sqlite_db_service import Transcription, get_transcripts
 from celery.result import AsyncResult
 
 from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks
@@ -19,7 +19,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-TEMP_DIR = "temp"
+TEMP_DIR = "/app/temp"
 os.makedirs(TEMP_DIR, exist_ok=True)
 
 
@@ -31,9 +31,7 @@ async def health_check():
     celery_status = AsyncResult(test_task.id).state
 
     try:
-        redis_status = (
-            "connected" if celery.control.inspect().ping() else "unreachable"
-        )
+        redis_status = "connected" if celery.control.inspect().ping() else "unreachable"
     except Exception:
         redis_status = "unreachable"
 
@@ -45,19 +43,18 @@ async def health_check():
 
 
 @app.post("/transcribe")
-async def add_transcribe_job(files: list[UploadFile] = File(...)):
+async def add_transcribe_job(files: List[UploadFile]):
     task_ids = []
-    for file in files:
-        # if os.path.exists(os.path.join(TEMP_DIR, file.filename)):
-        file_path = file.filename
-        file_name, ext = os.path.splitext(file_path)
 
+    for file in files:
+        file_path = os.path.join(TEMP_DIR, file.filename)
+        print(file_path)
         with open(file_path, "wb") as f:
             f.write(await file.read())
 
-        # Send each file for transcription
         task = celery_transcribe_audio.delay(file_path)
         task_ids.append({"file": file.filename, "task_id": task.id})
+
     return {"message": "Transcription job started", "jobs": task_ids}
 
 
