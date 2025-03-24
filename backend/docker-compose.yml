@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./src:/app/src
+      - ./backend:/app/backend
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+      # Add any other environment variables your application needs
+    # If you need to run a specific command instead of what's in the Dockerfile
+    # command: python -m src.backend.main
